@@ -1,0 +1,249 @@
+import { auth, db } from './firebase_config.js';
+
+const startBtn = document.getElementById('startBtn');
+const drawBtn = document.getElementById('drawBtn');
+const endBtn = document.getElementById('endSessionBtn');
+const card = document.getElementById('card');
+const video = document.getElementById('video');
+const canvas = document.getElementById('output');
+const toast = document.getElementById('toast');
+const diceCounter = document.getElementById('diceCounter');
+const canvasCtx = canvas.getContext('2d');
+
+let totalReps = 0, repGoal = 0, currentReps = 0, dice = 0, stream = null;
+let pose = null;
+let camera = null;
+let currentExercise = '';
+let lastPosition = null;
+let repInProgress = false;
+
+const exercises = {
+  Arms: ["Push-ups", "Plank Up-Downs", "Tricep Dips", "Shoulder Taps"],
+  Legs: ["Squats", "Lunges", "Glute Bridges", "Calf Raises"],
+  Core: ["Crunches", "Plank", "Russian Twists", "Leg Raises"],
+  Cardio: ["Jumping Jacks", "High Knees", "Burpees", "Mountain Climbers"]
+};
+
+const descriptions = {
+  "Push-ups": "Maintain a straight line from shoulders to heels.",
+  "Plank Up-Downs": "Move from elbow to push-up position repeatedly.",
+  "Tricep Dips": "Lower body until elbows reach 90° using a surface.",
+  "Shoulder Taps": "Tap alternate shoulders keeping core tight.",
+  "Squats": "Keep chest up and push hips back.",
+  "Lunges": "Step forward and lower knee near floor.",
+  "Glute Bridges": "Lift hips high, squeeze glutes.",
+  "Calf Raises": "Lift heels and squeeze calves.",
+  "Crunches": "Lift shoulders toward ceiling.",
+  "Plank": "Hold still; engage abs.",
+  "Russian Twists": "Twist torso side to side.",
+  "Leg Raises": "Lift legs slowly, keep core tight.",
+  "Jumping Jacks": "Full arm extension and rhythm.",
+  "High Knees": "Bring knees to waist level quickly.",
+  "Burpees": "Drop, push-up, and jump explosively.",
+  "Mountain Climbers": "Alternate knees toward chest quickly."
+};
+
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.style.display = 'block';
+  setTimeout(() => toast.style.display = 'none', 2000);
+}
+
+function drawCard() {
+  const suits = ['♥', '♦', '♣', '♠'];
+  const groups = ['Arms', 'Legs', 'Core', 'Cardio'];
+  const randGroup = groups[Math.floor(Math.random() * groups.length)];
+  currentExercise = exercises[randGroup][Math.floor(Math.random() * 4)];
+  repGoal = Math.floor(Math.random() * 13) + 2;
+  currentReps = 0;
+  lastPosition = null;
+  repInProgress = false;
+  
+  card.innerHTML = `<div id='card-suit'>${suits[Math.floor(Math.random() * 4)]} ${randGroup}</div>
+  <div id='card-exercise'>${currentExercise}</div>
+  <div id='card-reps'>Reps: ${repGoal}</div>
+  <div id='card-progress'>Progress: ${currentReps} / ${repGoal}</div>
+  <div id='card-desc'>${descriptions[currentExercise]}</div>`;
+  showToast(`New card: ${currentExercise}!`);
+}
+
+function detectRep(landmarks) {
+  if (!landmarks || landmarks.length === 0) return;
+
+  const leftShoulder = landmarks[11];
+  const rightShoulder = landmarks[12];
+  const leftHip = landmarks[23];
+  const rightHip = landmarks[24];
+  const leftKnee = landmarks[25];
+  const rightKnee = landmarks[26];
+  const leftAnkle = landmarks[27];
+  const rightAnkle = landmarks[28];
+  const leftElbow = landmarks[13];
+  const rightElbow = landmarks[14];
+  const leftWrist = landmarks[15];
+  const rightWrist = landmarks[16];
+
+  if (currentExercise.includes('Squat') || currentExercise.includes('Lunge')) {
+    const avgKneeY = (leftKnee.y + rightKnee.y) / 2;
+    const avgHipY = (leftHip.y + rightHip.y) / 2;
+    const kneeFlexion = avgKneeY - avgHipY;
+    
+    if (kneeFlexion > 0.15 && !repInProgress) {
+      repInProgress = true;
+    } else if (kneeFlexion < 0.05 && repInProgress) {
+      repInProgress = false;
+      incrementRep();
+    }
+  } else if (currentExercise.includes('Push-up')) {
+    const avgElbowY = (leftElbow.y + rightElbow.y) / 2;
+    const avgShoulderY = (leftShoulder.y + rightShoulder.y) / 2;
+    const elbowFlexion = avgElbowY - avgShoulderY;
+    
+    if (elbowFlexion > 0.1 && !repInProgress) {
+      repInProgress = true;
+    } else if (elbowFlexion < 0.02 && repInProgress) {
+      repInProgress = false;
+      incrementRep();
+    }
+  } else if (currentExercise.includes('Jumping Jack') || currentExercise.includes('High Knees')) {
+    const avgWristY = (leftWrist.y + rightWrist.y) / 2;
+    const avgShoulderY = (leftShoulder.y + rightShoulder.y) / 2;
+    
+    if (avgWristY < avgShoulderY && !repInProgress) {
+      repInProgress = true;
+    } else if (avgWristY > avgShoulderY + 0.1 && repInProgress) {
+      repInProgress = false;
+      incrementRep();
+    }
+  } else {
+    const avgHandY = (leftWrist.y + rightWrist.y) / 2;
+    if (lastPosition === null) {
+      lastPosition = avgHandY;
+      return;
+    }
+    
+    const movement = Math.abs(avgHandY - lastPosition);
+    if (movement > 0.15) {
+      lastPosition = avgHandY;
+      incrementRep();
+    }
+  }
+}
+
+function incrementRep() {
+  if (currentReps >= repGoal) return;
+  
+  currentReps++;
+  totalReps++;
+  card.querySelector('#card-progress').textContent = `Progress: ${currentReps} / ${repGoal}`;
+  
+  if (currentReps >= repGoal) {
+    showToast('Card complete!');
+    if (totalReps % 30 === 0) {
+      dice++;
+      diceCounter.textContent = `🎲 Dice: ${dice}`;
+      showToast('🎲 +1 Dice!');
+    }
+    setTimeout(drawCard, 1500);
+  }
+}
+
+function onResults(results) {
+  canvasCtx.save();
+  canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+  canvasCtx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+  
+  if (results.poseLandmarks) {
+    drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, 
+      { color: '#ff2e2e', lineWidth: 4 });
+    drawLandmarks(canvasCtx, results.poseLandmarks, 
+      { color: '#ffffff', lineWidth: 2, radius: 6 });
+    
+    detectRep(results.poseLandmarks);
+  }
+  
+  canvasCtx.restore();
+}
+
+async function startWorkout() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ 
+      video: { 
+        width: 640, 
+        height: 480,
+        facingMode: 'user'
+      } 
+    });
+    
+    video.srcObject = stream;
+    
+    pose = new Pose({
+      locateFile: (file) => {
+        return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
+      }
+    });
+    
+    pose.setOptions({
+      modelComplexity: 1,
+      smoothLandmarks: true,
+      enableSegmentation: false,
+      smoothSegmentation: false,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5
+    });
+    
+    pose.onResults(onResults);
+    
+    camera = new Camera(video, {
+      onFrame: async () => {
+        await pose.send({ image: video });
+      },
+      width: 640,
+      height: 480
+    });
+    
+    await camera.start();
+    
+    canvas.width = 640;
+    canvas.height = 480;
+    
+    drawBtn.classList.remove('hidden');
+    endBtn.classList.remove('hidden');
+    startBtn.classList.add('hidden');
+    drawCard();
+    showToast('Camera active — get ready!');
+  } catch (e) {
+    console.error('Camera error:', e);
+    showToast('Camera access denied. Please allow camera permissions.');
+  }
+}
+
+function endSession() {
+  if (camera) {
+    camera.stop();
+    camera = null;
+  }
+  
+  if (pose) {
+    pose.close();
+    pose = null;
+  }
+  
+  if (stream) {
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+  }
+  
+  drawBtn.classList.add('hidden');
+  endBtn.classList.add('hidden');
+  startBtn.classList.remove('hidden');
+  showToast('Session ended!');
+}
+
+startBtn.onclick = startWorkout;
+drawBtn.onclick = () => {
+  if (currentReps >= repGoal) {
+    drawCard();
+  }
+};
+endBtn.onclick = endSession;

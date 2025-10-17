@@ -4,7 +4,10 @@
   <meta charset='UTF-8'>
   <meta name='viewport' content='width=device-width, initial-scale=1.0'>
   <title>Rivalis — Solo Mode</title>
-  <link rel='stylesheet' href='solo_style.txt'>
+  <link rel='stylesheet' href='solo_style.css'>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
 </head>
 <body style="background:url('assets/Solo.png') center/cover no-repeat fixed;">
   <main id='solo-root'>
@@ -33,7 +36,7 @@
     <div id='toast'></div>
     <footer id='footer'>Contenders become Rivals. Rivals become Legends.</footer>
   </main>
-  <script type='module' src='firebase_config.txt'></script>
-  <script type='module' src='solo_script.txt'></script>
+  <script type='module' src='firebase_config.js'></script>
+  <script type='module' src='solo_script.js'></script>
 </body>
 </html>
