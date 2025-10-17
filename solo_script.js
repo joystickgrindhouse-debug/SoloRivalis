@@ -15,6 +15,7 @@ let pose = null;
 let camera = null;
 let currentExercise = '';
 let repInProgress = false;
+let wakeLock = null;
 
 const exercises = {
   Arms: ["Push-ups", "Plank Up-Downs", "Tricep Dips", "Shoulder Taps"],
@@ -47,6 +48,28 @@ const POSE_CONNECTIONS = [
   [11, 23], [12, 24], [23, 24], [23, 25], [24, 26],
   [25, 27], [26, 28], [27, 29], [28, 30], [29, 31], [30, 32]
 ];
+
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => {
+        console.log('Wake Lock released');
+      });
+      console.log('Wake Lock active');
+    }
+  } catch (err) {
+    console.error('Wake Lock error:', err);
+  }
+}
+
+function releaseWakeLock() {
+  if (wakeLock !== null) {
+    wakeLock.release().then(() => {
+      wakeLock = null;
+    });
+  }
+}
 
 function showToast(msg) {
   toast.textContent = msg;
@@ -258,6 +281,8 @@ function onResults(results) {
 
 async function startWorkout() {
   try {
+    await requestWakeLock();
+    
     stream = await navigator.mediaDevices.getUserMedia({ 
       video: { 
         width: 640, 
@@ -320,6 +345,8 @@ async function startWorkout() {
 }
 
 function endSession() {
+  releaseWakeLock();
+  
   if (camera) {
     camera.stop();
     camera = null;
@@ -342,6 +369,12 @@ function endSession() {
   startBtn.classList.remove('hidden');
   showToast('Session ended!');
 }
+
+document.addEventListener('visibilitychange', async () => {
+  if (wakeLock !== null && document.visibilityState === 'visible') {
+    await requestWakeLock();
+  }
+});
 
 startBtn.onclick = startWorkout;
 drawBtn.onclick = () => {
