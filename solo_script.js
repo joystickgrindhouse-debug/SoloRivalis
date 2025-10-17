@@ -42,6 +42,12 @@ const descriptions = {
   "Mountain Climbers": "Alternate knees toward chest quickly."
 };
 
+const POSE_CONNECTIONS = [
+  [11, 12], [11, 13], [13, 15], [12, 14], [14, 16],
+  [11, 23], [12, 24], [23, 24], [23, 25], [24, 26],
+  [25, 27], [26, 28], [27, 29], [28, 30], [29, 31], [30, 32]
+];
+
 function showToast(msg) {
   toast.textContent = msg;
   toast.style.display = 'block';
@@ -63,6 +69,35 @@ function drawCard() {
   <div id='card-progress'>Progress: ${currentReps} / ${repGoal}</div>
   <div id='card-desc'>${descriptions[currentExercise]}</div>`;
   showToast(`New card: ${currentExercise}!`);
+}
+
+function drawSkeleton(landmarks) {
+  const width = canvas.width;
+  const height = canvas.height;
+  
+  canvasCtx.strokeStyle = '#00ff00';
+  canvasCtx.lineWidth = 3;
+  canvasCtx.lineCap = 'round';
+  
+  POSE_CONNECTIONS.forEach(([i, j]) => {
+    const start = landmarks[i];
+    const end = landmarks[j];
+    if (start && end) {
+      canvasCtx.beginPath();
+      canvasCtx.moveTo(start.x * width, start.y * height);
+      canvasCtx.lineTo(end.x * width, end.y * height);
+      canvasCtx.stroke();
+    }
+  });
+  
+  canvasCtx.fillStyle = '#ff2e2e';
+  landmarks.forEach(landmark => {
+    if (landmark) {
+      canvasCtx.beginPath();
+      canvasCtx.arc(landmark.x * width, landmark.y * height, 5, 0, 2 * Math.PI);
+      canvasCtx.fill();
+    }
+  });
 }
 
 function detectRep(landmarks) {
@@ -212,14 +247,9 @@ function incrementRep() {
 function onResults(results) {
   canvasCtx.save();
   canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
-  canvasCtx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
   
   if (results.poseLandmarks) {
-    drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, 
-      { color: '#ff2e2e', lineWidth: 4 });
-    drawLandmarks(canvasCtx, results.poseLandmarks, 
-      { color: '#ffffff', lineWidth: 2, radius: 6 });
-    
+    drawSkeleton(results.poseLandmarks);
     detectRep(results.poseLandmarks);
   }
   
@@ -237,6 +267,19 @@ async function startWorkout() {
     });
     
     video.srcObject = stream;
+    
+    await new Promise((resolve) => {
+      video.onloadedmetadata = () => {
+        video.play();
+        resolve();
+      };
+    });
+    
+    const videoWidth = video.videoWidth || 640;
+    const videoHeight = video.videoHeight || 480;
+    
+    canvas.width = videoWidth;
+    canvas.height = videoHeight;
     
     pose = new Pose({
       locateFile: (file) => {
@@ -259,14 +302,11 @@ async function startWorkout() {
       onFrame: async () => {
         await pose.send({ image: video });
       },
-      width: 640,
-      height: 480
+      width: videoWidth,
+      height: videoHeight
     });
     
     await camera.start();
-    
-    canvas.width = 640;
-    canvas.height = 480;
     
     drawBtn.classList.remove('hidden');
     endBtn.classList.remove('hidden');
@@ -294,6 +334,8 @@ function endSession() {
     stream.getTracks().forEach(t => t.stop());
     stream = null;
   }
+  
+  canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
   
   drawBtn.classList.add('hidden');
   endBtn.classList.add('hidden');
