@@ -1,0 +1,3 @@
+App: Rivalis Solo Mode v3.1
+Type: HTML + Firebase-ready MVP
+Author: Rivalis Dev

@@ -1,0 +1,93 @@
+// Rivalis Solo Mode logic (offline functional version)
+import { auth, db } from './firebase_config.txt';
+const startBtn=document.getElementById('startBtn');
+const drawBtn=document.getElementById('drawBtn');
+const endBtn=document.getElementById('endSessionBtn');
+const card=document.getElementById('card');
+const video=document.getElementById('video');
+const toast=document.getElementById('toast');
+const diceCounter=document.getElementById('diceCounter');
+
+let totalReps=0,repGoal=0,currentReps=0,dice=0,stream=null;
+
+const exercises={
+  Arms:["Push-ups","Plank Up-Downs","Tricep Dips","Shoulder Taps"],
+  Legs:["Squats","Lunges","Glute Bridges","Calf Raises"],
+  Core:["Crunches","Plank","Russian Twists","Leg Raises"],
+  Cardio:["Jumping Jacks","High Knees","Burpees","Mountain Climbers"]
+};
+
+const descriptions={
+  "Push-ups":"Maintain a straight line from shoulders to heels.",
+  "Plank Up-Downs":"Move from elbow to push-up position repeatedly.",
+  "Tricep Dips":"Lower body until elbows reach 90° using a surface.",
+  "Shoulder Taps":"Tap alternate shoulders keeping core tight.",
+  "Squats":"Keep chest up and push hips back.",
+  "Lunges":"Step forward and lower knee near floor.",
+  "Glute Bridges":"Lift hips high, squeeze glutes.",
+  "Calf Raises":"Lift heels and squeeze calves.",
+  "Crunches":"Lift shoulders toward ceiling.",
+  "Plank":"Hold still; engage abs.",
+  "Russian Twists":"Twist torso side to side.",
+  "Leg Raises":"Lift legs slowly, keep core tight.",
+  "Jumping Jacks":"Full arm extension and rhythm.",
+  "High Knees":"Bring knees to waist level quickly.",
+  "Burpees":"Drop, push-up, and jump explosively.",
+  "Mountain Climbers":"Alternate knees toward chest quickly."
+};
+
+function showToast(msg){
+  toast.textContent=msg;
+  toast.style.display='block';
+  setTimeout(()=>toast.style.display='none',2000);
+}
+
+function drawCard(){
+  const suits=['♥','♦','♣','♠'];
+  const groups=['Arms','Legs','Core','Cardio'];
+  const randGroup=groups[Math.floor(Math.random()*groups.length)];
+  const randExercise=exercises[randGroup][Math.floor(Math.random()*4)];
+  repGoal=Math.floor(Math.random()*13)+2;
+  currentReps=0;
+  card.innerHTML=`<div id='card-suit'>${suits[Math.floor(Math.random()*4)]} ${randGroup}</div>
+  <div id='card-exercise'>${randExercise}</div>
+  <div id='card-reps'>Reps: ${repGoal}</div>
+  <div id='card-progress'>Progress: ${currentReps} / ${repGoal}</div>
+  <div id='card-desc'>${descriptions[randExercise]}</div>`;
+  showToast(`New card: ${randExercise}!`);
+}
+
+async function startWorkout(){
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:true});
+    video.srcObject=stream;
+    drawBtn.classList.remove('hidden');
+    endBtn.classList.remove('hidden');
+    startBtn.classList.add('hidden');
+    drawCard();
+    showToast('Camera active — get ready!');
+  }catch(e){showToast('Camera access denied.');}
+}
+
+function endSession(){
+  if(stream){
+    stream.getTracks().forEach(t=>t.stop());
+    stream=null;
+  }
+  showToast('Session ended — returning to hub...');
+  setTimeout(()=>window.location.href='/hub/index.html',2000);
+}
+
+startBtn.onclick=startWorkout;
+drawBtn.onclick=()=>{
+  if(currentReps>=repGoal){drawCard();return;}
+  currentReps++;
+  totalReps++;
+  card.querySelector('#card-progress').textContent=`Progress: ${currentReps} / ${repGoal}`;
+  if(currentReps>=repGoal){
+    showToast('Card complete!');
+    if(totalReps%30===0){dice++;diceCounter.textContent=`🎲 Dice: ${dice}`;showToast('🎲 +1 Dice!');}
+    setTimeout(drawCard,1500);
+  }
+};
+endBtn.onclick=endSession;

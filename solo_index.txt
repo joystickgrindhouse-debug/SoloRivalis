@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+  <meta charset='UTF-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+  <title>Rivalis — Solo Mode</title>
+  <link rel='stylesheet' href='solo_style.txt'>
+</head>
+<body style="background:url('assets/Solo.png') center/cover no-repeat fixed;">
+  <main id='solo-root'>
+    <header id='header'>
+      <h1>RIVALIS — SOLO MODE</h1>
+      <div id='diceCounter'>🎲 Dice: 0</div>
+    </header>
+    <section id='card-area'>
+      <div id='card'>
+        <div id='card-suit'>♥ CORE</div>
+        <div id='card-exercise'>Crunches</div>
+        <div id='card-reps'>Reps: 12</div>
+        <div id='card-progress'>Progress: 0 / 12</div>
+        <div id='card-desc'>Keep lower back on the ground, lift shoulders toward ceiling.</div>
+      </div>
+      <div id='controls'>
+        <button id='startBtn'>Start Workout</button>
+        <button id='drawBtn' class='hidden'>Draw Card</button>
+        <button id='endSessionBtn' class='hidden'>🔚 End Session</button>
+      </div>
+    </section>
+    <section id='camera-area'>
+      <video id='video' autoplay playsinline muted></video>
+      <canvas id='output'></canvas>
+    </section>
+    <div id='toast'></div>
+    <footer id='footer'>Contenders become Rivals. Rivals become Legends.</footer>
+  </main>
+  <script type='module' src='firebase_config.txt'></script>
+  <script type='module' src='solo_script.txt'></script>
+</body>
+</html>
