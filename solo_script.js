@@ -14,7 +14,6 @@ let totalReps = 0, repGoal = 0, currentReps = 0, dice = 0, stream = null;
 let pose = null;
 let camera = null;
 let currentExercise = '';
-let lastPosition = null;
 let repInProgress = false;
 
 const exercises = {
@@ -56,7 +55,6 @@ function drawCard() {
   currentExercise = exercises[randGroup][Math.floor(Math.random() * 4)];
   repGoal = Math.floor(Math.random() * 13) + 2;
   currentReps = 0;
-  lastPosition = null;
   repInProgress = false;
   
   card.innerHTML = `<div id='card-suit'>${suits[Math.floor(Math.random() * 4)]} ${randGroup}</div>
@@ -76,14 +74,12 @@ function detectRep(landmarks) {
   const rightHip = landmarks[24];
   const leftKnee = landmarks[25];
   const rightKnee = landmarks[26];
-  const leftAnkle = landmarks[27];
-  const rightAnkle = landmarks[28];
   const leftElbow = landmarks[13];
   const rightElbow = landmarks[14];
   const leftWrist = landmarks[15];
   const rightWrist = landmarks[16];
 
-  if (currentExercise.includes('Squat') || currentExercise.includes('Lunge')) {
+  if (currentExercise === 'Squats') {
     const avgKneeY = (leftKnee.y + rightKnee.y) / 2;
     const avgHipY = (leftHip.y + rightHip.y) / 2;
     const kneeFlexion = avgKneeY - avgHipY;
@@ -94,37 +90,102 @@ function detectRep(landmarks) {
       repInProgress = false;
       incrementRep();
     }
-  } else if (currentExercise.includes('Push-up')) {
+  } else if (currentExercise === 'Lunges') {
+    const avgKneeY = (leftKnee.y + rightKnee.y) / 2;
+    const avgHipY = (leftHip.y + rightHip.y) / 2;
+    const kneeFlexion = avgKneeY - avgHipY;
+    
+    if (kneeFlexion > 0.18 && !repInProgress) {
+      repInProgress = true;
+    } else if (kneeFlexion < 0.08 && repInProgress) {
+      repInProgress = false;
+      incrementRep();
+    }
+  } else if (currentExercise === 'Push-ups') {
     const avgElbowY = (leftElbow.y + rightElbow.y) / 2;
     const avgShoulderY = (leftShoulder.y + rightShoulder.y) / 2;
     const elbowFlexion = avgElbowY - avgShoulderY;
     
-    if (elbowFlexion > 0.1 && !repInProgress) {
+    if (elbowFlexion > 0.12 && !repInProgress) {
       repInProgress = true;
-    } else if (elbowFlexion < 0.02 && repInProgress) {
+    } else if (elbowFlexion < 0.03 && repInProgress) {
       repInProgress = false;
       incrementRep();
     }
-  } else if (currentExercise.includes('Jumping Jack') || currentExercise.includes('High Knees')) {
+  } else if (currentExercise === 'Jumping Jacks') {
     const avgWristY = (leftWrist.y + rightWrist.y) / 2;
     const avgShoulderY = (leftShoulder.y + rightShoulder.y) / 2;
     
-    if (avgWristY < avgShoulderY && !repInProgress) {
+    if (avgWristY < avgShoulderY - 0.05 && !repInProgress) {
       repInProgress = true;
-    } else if (avgWristY > avgShoulderY + 0.1 && repInProgress) {
+    } else if (avgWristY > avgShoulderY + 0.15 && repInProgress) {
+      repInProgress = false;
+      incrementRep();
+    }
+  } else if (currentExercise === 'High Knees') {
+    const maxKneeY = Math.max(leftKnee.y, rightKnee.y);
+    const avgHipY = (leftHip.y + rightHip.y) / 2;
+    const kneeRaise = avgHipY - maxKneeY;
+    
+    if (kneeRaise > 0.15 && !repInProgress) {
+      repInProgress = true;
+    } else if (kneeRaise < 0.05 && repInProgress) {
+      repInProgress = false;
+      incrementRep();
+    }
+  } else if (currentExercise === 'Crunches') {
+    const avgShoulderY = (leftShoulder.y + rightShoulder.y) / 2;
+    const avgHipY = (leftHip.y + rightHip.y) / 2;
+    const crunchDistance = avgHipY - avgShoulderY;
+    
+    if (crunchDistance < 0.25 && !repInProgress) {
+      repInProgress = true;
+    } else if (crunchDistance > 0.35 && repInProgress) {
+      repInProgress = false;
+      incrementRep();
+    }
+  } else if (currentExercise === 'Glute Bridges') {
+    const avgHipY = (leftHip.y + rightHip.y) / 2;
+    const avgShoulderY = (leftShoulder.y + rightShoulder.y) / 2;
+    const hipLift = avgShoulderY - avgHipY;
+    
+    if (hipLift < -0.1 && !repInProgress) {
+      repInProgress = true;
+    } else if (hipLift > 0.05 && repInProgress) {
+      repInProgress = false;
+      incrementRep();
+    }
+  } else if (currentExercise === 'Russian Twists') {
+    const leftShoulderX = leftShoulder.x;
+    const rightShoulderX = rightShoulder.x;
+    const shoulderRotation = Math.abs(leftShoulderX - rightShoulderX);
+    
+    if (shoulderRotation < 0.15 && !repInProgress) {
+      repInProgress = true;
+    } else if (shoulderRotation > 0.25 && repInProgress) {
+      repInProgress = false;
+      incrementRep();
+    }
+  } else if (currentExercise === 'Mountain Climbers' || currentExercise === 'Burpees') {
+    const avgKneeY = (leftKnee.y + rightKnee.y) / 2;
+    const avgHipY = (leftHip.y + rightHip.y) / 2;
+    const kneeToHip = avgHipY - avgKneeY;
+    
+    if (kneeToHip < 0.1 && !repInProgress) {
+      repInProgress = true;
+    } else if (kneeToHip > 0.25 && repInProgress) {
       repInProgress = false;
       incrementRep();
     }
   } else {
-    const avgHandY = (leftWrist.y + rightWrist.y) / 2;
-    if (lastPosition === null) {
-      lastPosition = avgHandY;
-      return;
-    }
+    const avgWristY = (leftWrist.y + rightWrist.y) / 2;
+    const avgShoulderY = (leftShoulder.y + rightShoulder.y) / 2;
+    const armMovement = avgShoulderY - avgWristY;
     
-    const movement = Math.abs(avgHandY - lastPosition);
-    if (movement > 0.15) {
-      lastPosition = avgHandY;
+    if (armMovement < -0.1 && !repInProgress) {
+      repInProgress = true;
+    } else if (armMovement > 0.1 && repInProgress) {
+      repInProgress = false;
       incrementRep();
     }
   }
@@ -211,7 +272,7 @@ async function startWorkout() {
     endBtn.classList.remove('hidden');
     startBtn.classList.add('hidden');
     drawCard();
-    showToast('Camera active — get ready!');
+    showToast('Camera active — pose detection ready!');
   } catch (e) {
     console.error('Camera error:', e);
     showToast('Camera access denied. Please allow camera permissions.');
